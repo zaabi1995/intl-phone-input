@@ -1,0 +1,107 @@
+<!doctype html>
+<!-- Minimal working example. Open in browser, type a number, observe E.164 in console on submit. -->
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <title>intl-phone-input example</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.10.1/build/css/intlTelInput.css">
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input[type="tel"] {
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #dde3ee;
+      font-size: 1rem; font-family: inherit;
+    }
+    button { margin-top: 20px; padding: 12px 24px; background: #1d44a3; color: #fff; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    .dir-toggle { margin-bottom: 30px; }
+
+    /* === intl-tel-input v25 RTL/LTR identical-layout recipe === */
+    form .iti { direction: ltr; width: 100%; display: block; }
+    form .iti * { direction: ltr; }
+    form .iti__country-container {
+      top: 0; bottom: 0; height: auto;
+      left: 0 !important; right: auto !important;
+      display: flex; align-items: stretch;
+    }
+    form .iti__selected-country {
+      background-color: #f4f6fb; height: auto; align-self: stretch;
+      display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
+      margin: 0; border: 0; border-right: 1px solid #dde3ee;
+      border-radius: 10px 0 0 10px; cursor: pointer; line-height: 1;
+      vertical-align: top; box-sizing: border-box; transition: background-color .15s;
+    }
+    form .iti__selected-country:hover { background-color: #eaeef7; }
+    form .iti__selected-country-primary { display: flex; align-items: center; gap: 6px; }
+    form .iti__selected-dial-code {
+      font-weight: 700; color: #1d44a3; font-size: .92rem;
+      font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr;
+    }
+    form .iti__flag { box-shadow: 0 0 0 1px rgba(0,0,0,.08); border-radius: 2px; }
+    form .iti input[type="tel"] {
+      text-align: left !important; direction: ltr !important; unicode-bidi: plaintext;
+    }
+    [dir="rtl"] form .iti input[type="tel"] { padding-right: 14px !important; }
+    form .iti__dropdown-content, form .iti__country-list {
+      font-family: inherit; font-size: .92rem; border-radius: 10px;
+      box-shadow: 0 12px 32px rgba(15,34,102,.18); max-height: 280px;
+      border: 1px solid #dde3ee; background: #fff;
+      direction: ltr; text-align: left; min-width: 280px;
+    }
+    form .iti__country { padding: 8px 12px; direction: ltr; text-align: left; }
+    form .iti__country.iti__highlight, form .iti__country:hover { background: #eef2f9; }
+  </style>
+</head>
+<body>
+  <div class="dir-toggle">
+    <button type="button" onclick="document.documentElement.dir = document.documentElement.dir === 'rtl' ? 'ltr' : 'rtl'; location.reload();">
+      Toggle LTR/RTL
+    </button>
+  </div>
+  <form id="demo">
+    <label for="phone">Phone number</label>
+    <input type="tel" id="phone" name="phone" autocomplete="tel">
+    <button type="submit">Submit</button>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.10.1/build/js/intlTelInputWithUtils.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var phoneInput = document.getElementById('phone');
+      phoneInput.removeAttribute('placeholder');
+
+      var iti = window.intlTelInput(phoneInput, {
+        initialCountry: 'auto',
+        geoIpLookup: function (success) {
+          fetch('https://ipapi.co/json/', { cache: 'force-cache' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { success((d && d.country_code) ? d.country_code.toLowerCase() : 'om'); })
+            .catch(function () { success('om'); });
+        },
+        separateDialCode: true,
+        countryOrder: ['om', 'fi', 'ae', 'sa', 'gb', 'us'],
+        autoPlaceholder: 'polite',
+        formatOnDisplay: true,
+        nationalMode: true,
+      });
+
+      function applyChipPadding() {
+        if (document.documentElement.dir !== 'rtl') return;
+        var chip = phoneInput.closest('.iti').querySelector('.iti__selected-country');
+        if (!chip) return;
+        var w = Math.ceil(chip.getBoundingClientRect().width) + 6;
+        phoneInput.style.setProperty('padding-left', w + 'px', 'important');
+      }
+      setTimeout(applyChipPadding, 50);
+      setTimeout(applyChipPadding, 300);
+      phoneInput.addEventListener('countrychange', applyChipPadding);
+
+      document.getElementById('demo').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var intl = iti.getNumber();
+        console.log('E.164:', intl);
+        alert('E.164: ' + intl);
+      }, true);
+    });
+  </script>
+</body>
+</html>
