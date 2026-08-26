@@ -1,6 +1,6 @@
 ---
 name: intl-phone-input
-description: Drop-in international phone input recipe for any HTML form across BHD-Group projects. Uses intl-tel-input v25 (jackocnr, 8k+ GitHub stars, MIT) with all the gotchas pre-solved: chip stays LEFT in both LTR and RTL pages (matching Apple, WhatsApp, Telegram, Google forms), library's inline RTL overrides defeated, auto IP-based country detection with fallback, libphonenumber-validated example placeholders, chip vertical alignment flush with the input bounds, server-side E.164 normalization that accepts both bare 8-digit Oman numbers and international format. Triggers on "phone selector", "phone input", "country code picker", "intl-tel-input", "international phone field", "WhatsApp number field", any HTML form that needs a phone number input.
+description: Drop-in international phone input recipe for any HTML form across BHD-Group projects. Uses intl-tel-input v25 (jackocnr, MIT) with the RTL chip-alignment, country-detection, and E.164-normalization gotchas pre-solved (chip stays LEFT in both LTR and RTL, matching Apple/WhatsApp/Telegram/Google forms). Triggers on "phone selector", "phone input", "country code picker", "intl-tel-input", "international phone field", "WhatsApp number field", any HTML form that needs a phone number input.
 ---
 
 # International Phone Input (intl-tel-input v25 + RTL Fixes)
@@ -8,10 +8,16 @@ description: Drop-in international phone input recipe for any HTML form across B
 The canonical recipe for adding a phone-number input to any BHD-Group HTML form. Solves the RTL/LTR layout problem once so future projects don't have to debug it again.
 
 ## When to use
-- Any new HTML form that captures a phone number
+- Any new **HTML form** that captures a phone number
 - WhatsApp / SMS opt-in fields
 - KYC / signup / contact forms
 - Replaces ad-hoc `<input type="tel" placeholder="+968 9xxx xxxx">` patterns
+
+**Not for app UIs.** For a React Native / Expo app or a custom vanilla-JS SPA
+that renders its own components (no `<form>` + library), use the sibling skill
+**country-phone-selector**, it ships the proven Splitty `PhoneField` /
+`CountryFlagSheet` / `openCountrySheet` drop-ins and shares one curated country
+list (Israel removed) across mobile + web.
 
 ## The library
 - Package: `intl-tel-input` v25.10.x ([GitHub](https://github.com/jackocnr/intl-tel-input))
@@ -30,7 +36,7 @@ Out-of-the-box intl-tel-input has three RTL gotchas that break Arabic pages:
 
 Also fixes the vertical alignment: the chip button defaults to 44px tall positioned with an implicit 9px top offset, overflowing the input bounds.
 
-Result: phone field renders **identically in LTR and RTL pages** with chip on the left, number on the right — the convention Apple, WhatsApp, Telegram, Google forms all use because numbers + dial codes are inherently LTR per Unicode BiDi spec.
+Result: phone field renders **identically in LTR and RTL pages** with chip on the left, number on the right, the convention Apple, WhatsApp, Telegram, Google forms all use because numbers + dial codes are inherently LTR per Unicode BiDi spec.
 
 ## The recipe
 
@@ -257,6 +263,42 @@ Visual sanity check at `https://placeholder.dev/your-form`:
 - EN: `[🇴🇲 ▼ +968 ▏ 9212 3456 ............]`
 - AR: `[🇴🇲 ▼ +968 ▏ 9212 3456 ............]` (label above stays RTL)
 
+## When the input lives inside a modal (display: none on init)
+
+This bites every time. intl-tel-input measures chip width ONCE on init and sets `input.style.paddingLeft = chipWidth + 6`. If the input is inside a `display:none` modal at that moment (Alpine `x-cloak`, headless UI dialog, Bootstrap modal, anything), chip width is 0 → padding lands at 6px → when the modal opens, **`+968` and the placeholder `9212 3456` overlap** (the digits sit on top of each other).
+
+Fix: re-measure whenever the modal becomes visible. Snippet for an Alpine `x-show` modal (works for any modal that toggles `display` via inline style):
+
+```js
+function applyChipPadding() {
+    var iti = input.closest('.iti');
+    if (!iti) return;
+    var chip = iti.querySelector('.iti__selected-country');
+    if (!chip) return;
+    var w = Math.ceil(chip.getBoundingClientRect().width) + 8;
+    if (w < 20) return;  // chip still not laid out, skip
+    input.style.setProperty('padding-left', w + 'px', 'important');
+}
+setTimeout(applyChipPadding, 50);
+setTimeout(applyChipPadding, 300);
+input.addEventListener('countrychange', applyChipPadding);
+
+// Watch for the modal opening (style attribute changing from display:none)
+var modal = input.closest('[x-show]') || input.closest('.modal') || input.closest('.fixed');
+if (modal && typeof MutationObserver === 'function') {
+    new MutationObserver(function () {
+        if (modal.style.display !== 'none') {
+            applyChipPadding();
+            setTimeout(applyChipPadding, 50);
+            setTimeout(applyChipPadding, 200);
+        }
+    }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+}
+window.addEventListener('resize', applyChipPadding);  // catches narrow viewport chip wrap
+```
+
+Why three timer passes inside the observer: the first runs synchronously when display flips; chip width is still ~0. The 50ms pass catches first layout. The 200ms pass catches a delayed reflow (e.g. font loading).
+
 ## Battle history
 
 Originally debugged across 4 deployment rounds on riyada.cardify.om:
@@ -265,8 +307,11 @@ Originally debugged across 4 deployment rounds on riyada.cardify.om:
 3. RTL inline `right: 0` → container spanned full width
 4. RTL skip-padding-left bug → placeholder hidden in AR mode
 
-Settled on the recipe above. Reference commit: `b1b1d46` in github.com/zaabi1995/riyada-event.
+Then 5th round on eid.bhd.om (26 May 2026): same chip-in-hidden-modal trap, fix codified above.
+
+Settled on the recipe above. Reference commits: `b1b1d46` in github.com/zaabi1995/riyada-event, `593b8db` in github.com/zaabi1995/eid-greetings.
 
 ## Used by
 
 - `riyada.cardify.om` (8 June 2026 webinars registration form, 3 languages AR/EN/FI)
+- `eid.bhd.om` lead-capture modal (Eid greeting card download form, 26 May 2026)
