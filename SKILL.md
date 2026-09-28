@@ -1,6 +1,6 @@
 ---
 name: intl-phone-input
-description: Drop-in international phone input recipe for any HTML form across BHD-Group projects. Uses intl-tel-input v25 (jackocnr, MIT) with the RTL chip-alignment, country-detection, and E.164-normalization gotchas pre-solved (chip stays LEFT in both LTR and RTL, matching Apple/WhatsApp/Telegram/Google forms). Triggers on "phone selector", "phone input", "country code picker", "intl-tel-input", "international phone field", "WhatsApp number field", any HTML form that needs a phone number input.
+description: "Drop-in international phone input recipe for any HTML form across BHD-Group projects. Uses intl-tel-input v25 with RTL chip-alignment, country-detection, and E.164-normalization pre-solved. Triggers on \"phone selector\", \"country code picker\", \"intl-tel-input\", \"WhatsApp number field\"."
 ---
 
 # International Phone Input (intl-tel-input v25 + RTL Fixes)
